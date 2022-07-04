@@ -1,5 +1,5 @@
 import sys
-
+import os
 import openml
 import pandas as pd
 import path
@@ -8,8 +8,29 @@ folder = path.Path(__file__).abspath()
 sys.path.append(folder.parent.parent)
 
 import argparse
-
+from typing import List
 from utils import read_config, save_pandas_plot, get_logger
+
+
+def plot_hist_by_cols(cols: List[str], figure_folder: str, openml_df: pd.DataFrame):
+    """Plot histograms by columns to `figure_folder`.
+
+    Args:
+        cols: list of columns to plot
+        figure_folder: folder to store plots
+        openml_df: dataframe to plot
+    Returns:
+        pd.DataFrame with meta-features of OpenML datasets
+    """
+    for col in cols:
+        hist_filepath = os.path.join(figure_folder, f"{col}_hist.png")
+        ax = openml_df[col].hist()
+        save_pandas_plot(
+            ax,
+            title=f'Distribution of {col}',
+            filepath=hist_filepath,
+        )
+        ax.clear()
 
 
 def get_openml_df(config: dict) -> pd.DataFrame:
@@ -28,8 +49,8 @@ def get_openml_df(config: dict) -> pd.DataFrame:
     config = config['data']['openml_settings']
 
     openml_df = openml_df[
-        (openml_df['NumberOfClasses'] > config['min_num_classes']) &
-        (openml_df['NumberOfClasses'] < config['max_num_classes']) &
+        (openml_df['NumberOfClasses'] > config['min_number_of_classes']) &
+        (openml_df['NumberOfClasses'] < config['max_number_of_classes']) &
         (openml_df['NumberOfInstances'] < config['max_number_of_instances']) &
         (openml_df['NumberOfInstances'] > config['min_number_of_instances']) &
         (openml_df['NumberOfFeatures'] < config['max_number_of_features'])
@@ -55,18 +76,8 @@ def get_openml_df(config: dict) -> pd.DataFrame:
         'fri_c3_100_50',
     ]
     openml_df = openml_df[~openml_df['name'].isin(df_to_drop)]
-
     cols = ['NumberOfInstances', 'NumberOfFeatures', 'NumberOfClasses']
-    for col in cols:
-        hist_filepath = f"{figure_folder}{col}_hist.png"
-        ax = openml_df[col].hist()
-        save_pandas_plot(
-            ax,
-            title=f'Distribution of {col}',
-            filepath=hist_filepath,
-        )
-        ax.clear()
-
+    plot_hist_by_cols(cols, figure_folder, openml_df)
     return openml_df
 
 

@@ -78,7 +78,7 @@ class TargetCalcer(BaseCalcer):
                 target_df['silhouette'].append(silhouette)
                 target_df['rand'].append(rand)
                 target_df['CH'].append(calinski_harabasz)
-                target_df['DB'].append(db - 1)
+                target_df['DB'].append(db)
         target_df = pd.DataFrame(target_df)
         opt_algo = self._get_opt_algo(target_df)
         ideal_inner_metric = self._get_opt_metric(target_df, opt_algo)

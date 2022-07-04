@@ -52,7 +52,7 @@ def save_df_as_img(df: pd.DataFrame, filepath: str) -> None:
 
 def plot_grid_search_results(
     gs_results: dict,
-    scoring: dict[str, str],
+    scoring: dict,
     best_params: dict,
     filepath: str,
     refit_scorer: str = 'F1_macro',
