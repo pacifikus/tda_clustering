@@ -14,7 +14,7 @@ def test_get_openml_data(config, tmp_folder):
 
 def test_plot_hist_by_cols(tmp_folder, openml_data):
     cols = ['NumberOfInstances', 'NumberOfFeatures', 'NumberOfClasses']
-    plot_hist_by_cols(cols=cols, figure_folder=tmp_folder+'\\', openml_df=openml_data)
+    plot_hist_by_cols(cols=cols, figure_folder=tmp_folder, openml_df=openml_data)
     assert len(
         [
             entry for entry in os.listdir(tmp_folder)
