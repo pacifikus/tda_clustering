@@ -1,22 +1,31 @@
-import sys
-
 import argparse
+import os
+import sys
+from typing import Tuple
+
 import joblib
+import mlflow
 import pandas as pd
+import path
+from dotenv import load_dotenv
+from mlflow.tracking import MlflowClient
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import GridSearchCV
 from sklearn.model_selection import train_test_split
-import path
-import os
-from mlflow.tracking import MlflowClient
-import mlflow
-from dotenv import load_dotenv
-from typing import Tuple
 
 folder = path.Path(__file__).abspath()
 sys.path.append(folder.parent.parent)
 
-from utils import read_config, get_logger, plot_grid_search_results
+from feature_importances import (
+    get_feature_importances_mdi,
+    get_feature_importances_permutation,
+)
+from utils import (
+    read_config,
+    get_logger,
+    plot_grid_search_results,
+    plot_feature_importances,
+)
 from mlflow_utils import create_mlflow_experiment
 
 load_dotenv()
@@ -55,7 +64,7 @@ def search_hyperparams(
     config: dict,
     X_train: pd.DataFrame,
     y_train: pd.Series,
-    scoring: dict[str, str],
+    scoring: dict,
 ) -> GridSearchCV:
     """Search model hyperparams with GridSearchCV.
 
@@ -90,6 +99,36 @@ def search_hyperparams(
 
     rf_grid_search.fit(X_train, y_train)
     return rf_grid_search
+
+
+def start_interpretation(model, X_train, X_test, y_test, config):
+    """
+    Compute feature importances for the given model.
+
+    Args:
+        model: fitted model object
+        X_train: train data
+        X_test: test data
+        y_test: test labels
+        config: dictionary with configuration params
+    """
+    mdi_importances, mdi_std = get_feature_importances_mdi(model, X_train)
+    mdi_filepath = os.path.join(
+        config['data']['filepaths']['figure_folder'],
+        config['train']['f_importances']['mdi']['plot_file_name']
+    )
+    perm_importances, perm_std = get_feature_importances_permutation(
+        model,
+        X_test,
+        y_test,
+        config,
+    )
+    perm_filepath = os.path.join(
+        config['data']['filepaths']['figure_folder'],
+        config['train']['f_importances']['permutation']['plot_file_name']
+    )
+    plot_feature_importances(mdi_importances, mdi_std, mdi_filepath)
+    plot_feature_importances(perm_importances, perm_std, perm_filepath)
 
 
 def main(config_path: str) -> None:
@@ -141,19 +180,21 @@ def main(config_path: str) -> None:
             model = rf_grid_search.best_estimator_
             f1_score = rf_grid_search.best_score_
             logger.info(f'Best grid search estimator: {model}')
-            logger.info(f'Best grid search score: {f1_score}')
+            logger.info(f'Best grid search score: {f1_score}') # TODO: roc + plot
 
             mlflow.log_params(params=rf_grid_search.best_params_)
             mlflow.log_metric('f1_macro', f1_score)
             mlflow.sklearn.log_model(model, os.getenv('MLFLOW_STORAGE'))
 
             plot_grid_search_results(
-                results=rf_grid_search.cv_results_,
+                gs_results=rf_grid_search.cv_results_,
                 scoring=scoring,
                 filepath=config['data']['filepaths']['figure_folder']
                 + f'GridSearchCV_{clf_type}_results.png',
                 best_params=rf_grid_search.best_params_,
             )
+
+            start_interpretation(model, X_train, X_test, y_test, config)
 
             logger.info(f'Save {clf_type} model')
             models_path = config['train']['model_path'] \

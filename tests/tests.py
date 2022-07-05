@@ -1,4 +1,3 @@
-import pytest
 from src.data.get_openml_data import get_openml_df, plot_hist_by_cols
 import pandas as pd
 import os

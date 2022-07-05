@@ -49,6 +49,14 @@ train:
       min_samples_split: [ 2, 3, 4, 5, 6]
       min_samples_leaf: [ 1, 2, 3, 4, 5 ]
   model_path: models/
+  f_importances:
+    mdi:
+      plot_file_name: mdi_f_imp_result.png
+    permutation:
+      n_repeats: 10
+      plot_file_name: permutation_f_imp_result.png
+
+
 
 
 

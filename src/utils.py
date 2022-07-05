@@ -132,6 +132,28 @@ def plot_grid_search_results(
     fig.savefig(filepath)
 
 
+def plot_feature_importances(
+    feature_importances,
+    std,
+    filepath,
+    fi_type='MDI',
+):
+    """
+    Plot feature importances plot to .png file.
+
+    Args:
+        feature_importances: computed values of feature importances
+        std: standard deviation of `feature_importances`
+        filepath: path to store .png plot
+        fi_type: type of feature importances computation
+    """
+    fig, ax = plt.subplots(figsize=(12, 8))
+    feature_importances.plot.bar(yerr=std, ax=ax)
+    title = f'Feature importances using {fi_type}'
+    ax.set_ylabel('Mean decrease in value')
+    save_pandas_plot(ax, title=title, filepath=filepath)
+
+
 def get_console_handler() -> logging.StreamHandler:
     """Get console handler.
 
