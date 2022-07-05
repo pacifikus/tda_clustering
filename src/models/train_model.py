@@ -9,6 +9,7 @@ import pandas as pd
 import path
 from dotenv import load_dotenv
 from mlflow.tracking import MlflowClient
+from mlflow.entities import ViewType
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import GridSearchCV
 from sklearn.model_selection import train_test_split
@@ -131,6 +132,44 @@ def start_interpretation(model, X_train, X_test, y_test, config):
     plot_feature_importances(perm_importances, perm_std, perm_filepath)
 
 
+def find_best_run(target_col):
+    """
+    Find best run from MLflow experiment.
+    Args:
+        target_col: target column to get best run
+
+    Returns:
+        best run of the experiment
+    """
+    exp_name = f'clf_{target_col}'
+    client = MlflowClient(
+        tracking_uri=os.getenv('MLFLOW_TRACKING_URI'),
+        registry_uri=os.getenv('MLFLOW_STORAGE'),
+    )
+    experiment = client.get_experiment_by_name(exp_name)
+    best_run = client.search_runs(
+        experiment_ids=experiment.experiment_id,
+        run_view_type=ViewType.ACTIVE_ONLY,
+        max_results=1,
+        order_by=["metrics.f1_macro DESC"]
+    )[0]
+    return best_run
+
+
+def register_model(target_col):
+    """
+    Register model from the best MLflow run.
+
+    Args:
+        target_col: target column to get best run
+    """
+    best_run = find_best_run(target_col)
+    mlflow.register_model(
+        model_uri=f'runs:/{best_run.info.run_id}/model',
+        name=f'{target_col}_rf_{best_run.data.metrics["f1_macro"]:.2f}'
+    )
+
+
 def main(config_path: str) -> None:
     """Run model training and hyperparameter search.
 
@@ -200,6 +239,8 @@ def main(config_path: str) -> None:
             models_path = config['train']['model_path'] \
                 + f'model__{clf_type}.joblib'
             joblib.dump(rf_grid_search, models_path)
+
+            register_model(target)
 
 
 if __name__ == '__main__':
