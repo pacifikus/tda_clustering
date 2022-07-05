@@ -166,7 +166,7 @@ def register_model(target_col):
     best_run = find_best_run(target_col)
     mlflow.register_model(
         model_uri=f'runs:/{best_run.info.run_id}/model',
-        name=f'{target_col}_rf_{best_run.data.metrics["f1_macro"]:.2f}'
+        name=f'{target_col}_rf'
     )
 
 
