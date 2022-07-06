@@ -36,7 +36,7 @@ Project Organization
     │   │   │   ├── mapper_features.py
     │   │   │   ├── stats_features.py
     │   │   │   ├── target_features.py
-    │   │   │   └──  tda_features.py
+    │   │   │   └── tda_features.py
     │   │   ├── tda_feature_engineering.py
     │   │   └── build_features.py
     │   │
