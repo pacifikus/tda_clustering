@@ -31,7 +31,7 @@ Project Organization
     │   │   └── get_openml_data.py
     │   │
     │   ├── features       <- Scripts to turn raw data into features for modeling
-    │   │   ├── calcers       <- Calcers realization for features
+    │   │   ├── calcers    <- Calcers realization for features
     │   │   │   ├── base_calcer.py
     │   │   │   ├── mapper_features.py
     │   │   │   ├── stats_features.py
