@@ -4,7 +4,21 @@
 [![Actions Status](https://github.com/pacifikus/tda_clustering/workflows/StyleGuide/badge.svg)](https://github.com/pacifikus/tda_clustering/actions)
 [![wemake-python-styleguide](https://img.shields.io/badge/style-wemake-000000.svg)](https://github.com/wemake-services/wemake-python-styleguide)
 
-A short description of the project.
+## Overview
+
+This is a project to predict optimal clustering algorithm and quality metric for a given dataset using topological data analysis features. 
+
+Main idea is to train meta-algorithm on classification datasets to create prediction for unknown data.
+
+## How to install dependencies
+
+Declare any dependencies in `requirements.txt` for `pip` installation.
+
+To install them, run:
+
+```
+pip install -r requirements.txt
+```
 
 Project Organization
 ------------
@@ -31,12 +45,12 @@ Project Organization
     │   │   └── get_openml_data.py
     │   │
     │   ├── features       <- Scripts to turn raw data into features for modeling
-    │   │   ├── calcers       <- Calcers realization for features
+    │   │   ├── calcers    <- Calcers realization for features
     │   │   │   ├── base_calcer.py
     │   │   │   ├── mapper_features.py
     │   │   │   ├── stats_features.py
     │   │   │   ├── target_features.py
-    │   │   │   └──  tda_features.py
+    │   │   │   └── tda_features.py
     │   │   ├── tda_feature_engineering.py
     │   │   └── build_features.py
     │   │
