@@ -9,7 +9,7 @@ sys.path.append(folder.parent.parent)
 
 import argparse
 from typing import List
-from utils import read_config, save_pandas_plot, get_logger
+from utils import read_config, save_plot_as_file, get_logger
 
 
 def plot_hist_by_cols(cols: List[str], figure_folder: str, openml_df: pd.DataFrame):
@@ -25,7 +25,7 @@ def plot_hist_by_cols(cols: List[str], figure_folder: str, openml_df: pd.DataFra
     for col in cols:
         hist_filepath = os.path.join(figure_folder, f"{col}_hist.png")
         ax = openml_df[col].hist()
-        save_pandas_plot(
+        save_plot_as_file(
             ax,
             title=f'Distribution of {col}',
             filepath=hist_filepath,
