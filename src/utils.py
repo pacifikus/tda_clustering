@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 import yaml
 from pandas.plotting import table
+from itertools import cycle
 
 
 def read_config(cfg_path: str) -> dict:
@@ -21,7 +22,7 @@ def read_config(cfg_path: str) -> dict:
         return yaml.load(f_open, Loader=yaml.SafeLoader)
 
 
-def save_pandas_plot(ax: plt.Axes, title: str, filepath: str) -> None:
+def save_plot_as_file(ax: plt.Axes, title: str, filepath: str) -> None:
     """Plot pandas to .png.
 
     Args:
@@ -133,11 +134,11 @@ def plot_grid_search_results(
 
 
 def plot_feature_importances(
-    feature_importances,
-    std,
-    filepath,
-    fi_type='MDI',
-):
+    feature_importances: np.ndarray,
+    std: np.ndarray,
+    filepath: str,
+    fi_type: str = 'MDI',
+) -> None:
     """
     Plot feature importances plot to .png file.
 
@@ -147,11 +148,79 @@ def plot_feature_importances(
         filepath: path to store .png plot
         fi_type: type of feature importances computation
     """
-    fig, ax = plt.subplots(figsize=(12, 8))
+    fig, ax = plt.subplots(figsize=(28, 12))
     feature_importances.plot.bar(yerr=std, ax=ax)
     title = f'Feature importances using {fi_type}'
     ax.set_ylabel('Mean decrease in value')
-    save_pandas_plot(ax, title=title, filepath=filepath)
+    ax.set_xticklabels(ax.get_xticklabels(), rotation=45)
+    save_plot_as_file(ax, title=title, filepath=filepath)
+
+
+def plot_roc_curves(
+    fpr: dict,
+    tpr: dict,
+    roc_auc: dict,
+    n_classes: int,
+    clf_type: str,
+    filepath: str,
+) -> None:
+    """
+    Plot computed roc curves with micro and macro avg to .png file.
+
+    Args:
+        fpr: false positive rates
+        tpr: true positive rates
+        roc_auc: roc_auc values
+        n_classes: number of classes
+        clf_type: type of classifier
+        filepath: path to save .png file
+    """
+    lw = 2
+
+    plt.figure()
+    plt.plot(
+        fpr['micro'],
+        tpr['micro'],
+        label='micro-average ROC curve (area = {0:0.2f})'.format(
+            roc_auc['micro'],
+        ),
+        color='deeppink',
+        linestyle=':',
+        linewidth=4,
+    )
+
+    plt.plot(
+        fpr['macro'],
+        tpr['macro'],
+        label='macro-average ROC curve (area = {0:0.2f})'.format(
+            roc_auc['macro'],
+        ),
+        color='navy',
+        linestyle=':',
+        linewidth=4,
+    )
+
+    colors = cycle(['aqua', 'darkorange', 'cornflowerblue'])
+    for idx, color in zip(range(n_classes), colors):
+        plt.plot(
+            fpr[idx],
+            tpr[idx],
+            color=color,
+            lw=lw,
+            label='ROC curve of class {0} (area = {1:0.2f})'.format(
+                idx,
+                roc_auc[idx],
+            ),
+        )
+
+    plt.plot([0, 1], [0, 1], 'k--', lw=lw)
+    plt.xlim([0.0, 1.0])
+    plt.ylim([0.0, 1.05])
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title(f'ROC-curve for {clf_type} classifier')
+    plt.legend(loc='lower right')
+    plt.savefig(filepath)
 
 
 def get_console_handler() -> logging.StreamHandler:

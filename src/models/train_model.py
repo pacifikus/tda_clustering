@@ -6,13 +6,16 @@ from typing import Tuple
 import joblib
 import mlflow
 import pandas as pd
+import numpy as np
 import path
 from dotenv import load_dotenv
 from mlflow.tracking import MlflowClient
 from mlflow.entities import ViewType
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import GridSearchCV
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import GridSearchCV, train_test_split
+from sklearn.preprocessing import label_binarize
+from sklearn.metrics import roc_curve, auc, classification_report
+
 
 folder = path.Path(__file__).abspath()
 sys.path.append(folder.parent.parent)
@@ -26,6 +29,8 @@ from utils import (
     get_logger,
     plot_grid_search_results,
     plot_feature_importances,
+    plot_roc_curves,
+    save_df_as_img,
 )
 from mlflow_utils import create_mlflow_experiment
 
@@ -49,7 +54,7 @@ def split_data(
     """
     y = input_data[target_col]
     X = input_data.drop(
-        ['dataset_name', 'true_n_clusters', 'rand'] + target_cols,
+        ['dataset_name', 'true_n_clusters', 'rand'] + target_cols + ['DB', 'CH', 'silhouette'],
         axis=1,
     )
     X_train, X_test, y_train, y_test = train_test_split(
@@ -82,8 +87,7 @@ def search_hyperparams(
     param_grid = {
         'n_estimators': clf_config['n_estimators'],
         'max_depth': clf_config['max_depth'] + [None],
-        # 'min_samples_split': clf_config['min_samples_split'],
-        # 'min_samples_leaf': clf_config['min_samples_leaf'],
+        'min_samples_split': clf_config['min_samples_split'],
         'random_state': [clf_config['random_state']],
     }
 
@@ -102,7 +106,14 @@ def search_hyperparams(
     return rf_grid_search
 
 
-def start_interpretation(model, X_train, X_test, y_test, config):
+def start_interpretation(
+    model: RandomForestClassifier,
+    X_train: pd.DataFrame,
+    X_test: pd.DataFrame,
+    y_test: pd.Series,
+    config: dict,
+    clf_name: str,
+) -> None:
     """
     Compute feature importances for the given model.
 
@@ -112,11 +123,12 @@ def start_interpretation(model, X_train, X_test, y_test, config):
         X_test: test data
         y_test: test labels
         config: dictionary with configuration params
+        clf_name: classificator type (target)
     """
     mdi_importances, mdi_std = get_feature_importances_mdi(model, X_train)
     mdi_filepath = os.path.join(
         config['data']['filepaths']['figure_folder'],
-        config['train']['f_importances']['mdi']['plot_file_name']
+        f'{clf_name}_' + config['train']['f_importances']['mdi']['plot_file_name']
     )
     perm_importances, perm_std = get_feature_importances_permutation(
         model,
@@ -126,13 +138,101 @@ def start_interpretation(model, X_train, X_test, y_test, config):
     )
     perm_filepath = os.path.join(
         config['data']['filepaths']['figure_folder'],
-        config['train']['f_importances']['permutation']['plot_file_name']
+        f'{clf_name}_' + config['train']['f_importances']['permutation']['plot_file_name']
     )
     plot_feature_importances(mdi_importances, mdi_std, mdi_filepath)
-    plot_feature_importances(perm_importances, perm_std, perm_filepath)
+    plot_feature_importances(perm_importances, perm_std, perm_filepath, fi_type='Permutation')
 
 
-def find_best_run(target_col):
+def compute_roc_curves(
+    clf: RandomForestClassifier,
+    X_test: pd.DataFrame,
+    y_test: pd.Series,
+    X_train: pd.DataFrame,
+    y_train: pd.Series,
+    config: dict,
+    clf_type: str,
+) -> None:
+    """
+    Compute roc curves with micro and macro avg for a given classifier.
+    Args:
+        clf: fitted model
+        X_test: test split of the data
+        y_test: test labels
+        X_train: train  split of the data
+        y_train: train labels
+        config: dictionary with configuration params
+        clf_type: type of classifier
+    """
+    n_classes = y_train.nunique()
+    y_train = label_binarize(y_train, classes=[0, 1, 2])
+    y_test = label_binarize(y_test, classes=[0, 1, 2])
+    y_score = clf.fit(X_train, y_train).predict(X_test)
+
+    fpr = dict()
+    tpr = dict()
+    roc_auc = dict()
+    for i in range(n_classes):
+        fpr[i], tpr[i], _ = roc_curve(y_test[:, i], y_score[:, i])
+        roc_auc[i] = auc(fpr[i], tpr[i])
+
+    fpr["micro"], tpr["micro"], _ = roc_curve(y_test.ravel(), y_score.ravel())
+    roc_auc["micro"] = auc(fpr["micro"], tpr["micro"])
+
+    all_fpr = np.unique(np.concatenate([fpr[i] for i in range(n_classes)]))
+    mean_tpr = np.zeros_like(all_fpr)
+    for i in range(n_classes):
+        mean_tpr += np.interp(all_fpr, fpr[i], tpr[i])
+
+    mean_tpr /= n_classes
+
+    fpr["macro"] = all_fpr
+    tpr["macro"] = mean_tpr
+    roc_auc["macro"] = auc(fpr["macro"], tpr["macro"])
+    img_filepath = os.path.join(
+        config['data']['filepaths']['figure_folder'],
+        f'{clf_type}_roc_auc_curves.png',
+    )
+    plot_roc_curves(
+        fpr,
+        tpr,
+        roc_auc,
+        n_classes,
+        clf_type,
+        filepath=img_filepath,
+    )
+
+
+def compute_classification_report(
+    clf: RandomForestClassifier,
+    X_test: pd.DataFrame,
+    y_test: pd.Series,
+    config: dict,
+    clf_type: str,
+) -> None:
+    """
+    Compute and plot to file classification report by test split.
+    Args:
+        clf: fitted model
+        X_test: test split of the data
+        y_test: test labels
+        config: dictionary with configuration params
+        clf_type: type of classifier
+
+    Returns:
+
+    """
+    y_preds = clf.predict(X_test)
+    clf_report = classification_report(y_test, y_preds, output_dict=True)
+    clf_report = pd.DataFrame(clf_report).transpose()
+    img_filepath = os.path.join(
+        config['data']['filepaths']['figure_folder'],
+        f'{clf_type}_clf_report.png',
+    )
+    save_df_as_img(clf_report, img_filepath)
+
+
+def find_best_run(target_col: str) -> mlflow.entities.Run:
     """
     Find best run from MLflow experiment.
     Args:
@@ -156,7 +256,7 @@ def find_best_run(target_col):
     return best_run
 
 
-def register_model(target_col):
+def register_model(target_col: str) -> None:
     """
     Register model from the best MLflow run.
 
@@ -205,7 +305,7 @@ def main(config_path: str) -> None:
             experiment_id=exp_id,
         ):
             logger.info(f'Start hyperparameters search for {target} clf')
-            X = meta_dataset[meta_dataset[target] != 3]  # TODO check, 3 = nans
+            X = meta_dataset.fillna(0)
             X_train, X_test, y_train, y_test = split_data(X, target, config)
 
             scoring = config['train']['grid_search_scoring']
@@ -219,21 +319,15 @@ def main(config_path: str) -> None:
             model = rf_grid_search.best_estimator_
             f1_score = rf_grid_search.best_score_
             logger.info(f'Best grid search estimator: {model}')
-            logger.info(f'Best grid search score: {f1_score}') # TODO: roc + plot
+            logger.info(f'Best grid search score: {f1_score}')
 
             mlflow.log_params(params=rf_grid_search.best_params_)
             mlflow.log_metric('f1_macro', f1_score)
             mlflow.sklearn.log_model(model, os.getenv('MLFLOW_STORAGE'))
 
-            plot_grid_search_results(
-                gs_results=rf_grid_search.cv_results_,
-                scoring=scoring,
-                filepath=config['data']['filepaths']['figure_folder']
-                + f'GridSearchCV_{clf_type}_results.png',
-                best_params=rf_grid_search.best_params_,
-            )
-
-            start_interpretation(model, X_train, X_test, y_test, config)
+            start_interpretation(model, X_train, X_test, y_test, config, clf_name=target)
+            compute_classification_report(model, X_test, y_test, config, clf_type=target)
+            compute_roc_curves(model, X_test, y_test, X_train, y_train, config, clf_type=target)
 
             logger.info(f'Save {clf_type} model')
             models_path = config['train']['model_path'] \
