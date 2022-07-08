@@ -7,7 +7,7 @@ data:
     min_number_of_classes: 1
     max_number_of_classes: 15
     min_number_of_instances: 50
-    max_number_of_instances: 900
+    max_number_of_instances: 2000
     max_number_of_features: 60
     cols_to_load: [ "did", "name", "NumberOfInstances", "NumberOfFeatures", "NumberOfClasses", "version" ]
   filepaths:

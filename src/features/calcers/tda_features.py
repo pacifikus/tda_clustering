@@ -79,7 +79,6 @@ class TDACalcer(BaseCalcer):
                 f'sum_length_hom_dim_{homology_dim}'
             ] = sum_length(
                 persistence_diagram[0],
-                homology_dim=homology_dim,
             )
             features[
                 f'average_length_hom_dim_{homology_dim}'

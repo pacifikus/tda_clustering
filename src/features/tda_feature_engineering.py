@@ -66,13 +66,16 @@ def length_betti(
     n: int = 2,
     homology_dim: int = 0,
 ) -> float:
-    return np.partition(
-        np.diff(
-            persistence_diagram[:, :2][
-                persistence_diagram[:, -1] == homology_dim
-            ],
-        ).flatten(), -1 * n,
-    )[-1 * n]
+    try:
+        return np.partition(
+            np.diff(
+                persistence_diagram[:, :2][
+                    persistence_diagram[:, -1] == homology_dim
+                ],
+            ).flatten(), -1 * n,
+        )[-1 * n]
+    except:
+        return -1
 
 
 def sum_length(
@@ -102,6 +105,15 @@ def onset_longest_betti(
     return persistence_hom_dim[
         np.diff(persistence_hom_dim).argmax()
     ][0]
+
+
+def smallest_onset(persistence_diagram, homology_dim=1, cutoff=1.0):
+    try:
+        return persistence_diagram[:, :2][
+            (np.diff(persistence_diagram[:, :2]) >= cutoff).flatten(), :
+        ].flatten()[0]
+    except:
+        return -1
 
 
 def average_middle_point(
