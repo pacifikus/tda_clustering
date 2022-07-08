@@ -65,6 +65,31 @@ Project Organization
     │   └── tests.py
     └── test_environment.py
 
+## How to run
+
+First of all, run MLflow. You can specify backend-store-uri and default-artifact-root as you wish:
+
+```
+mlflow server --backend-store-uri sqlite:///mlruns.db --default-artifact-root artifacts
+```
+
+To collect OpenML meta-data run
+
+```
+src/data/get_openml_data.py --config config/params.yaml
+```
+
+To collect OpenML datasets and build processed data run:
+
+```
+src/features/build_features.py --config config/params.yaml
+```
+
+To train model run:
+
+```
+src/models/train_model.py --config config/params.yaml
+```
 
 --------
 
